@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 
 # URL of the webpage to scrape
-url = 'https://www.imdb.com/list/ls530915139/'
+url = 'https://www.statista.com/statistics/610928/japan-population-by-prefecture/'
 
 # Send a GET request to the URL and store the response
 response = requests.get(url)
@@ -23,4 +23,4 @@ middle_index = len(body_lines) // 2
 middle_lines = body_lines[middle_index - 150:middle_index + 150]
 
 # Join the middle lines together with line breaks and display them
-print('\n'.join(middle_lines))
+print(''.join(middle_lines))

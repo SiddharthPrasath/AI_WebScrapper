@@ -1,27 +1,31 @@
 import requests
 from bs4 import BeautifulSoup
+import pandas as pd
 
-url = 'https://en.wikipedia.org/wiki/List_of_Japanese_prefectures_by_population'
+url = 'https://www.forbes.com/lists/india-billionaires/?sh=7914181e109b'
+reqs = requests.get(url)
+soup = BeautifulSoup(reqs.text, 'html.parser')
 
-response = requests.get(url)
+tables = soup.findAll('div', {'class': 'table'})
+results = []
 
-if response.status_code == 200:
-    soup = BeautifulSoup(response.content, 'html.parser')
-    table = soup.find('table', {'class': 'wikitable'})
-    rows = table.find_all('tr')
+for table in tables:
+
+    rows = table.findAll('a')
+
+
     for row in rows:
-        cells = row.find_all('td')
-        if cells:
-            name = cells[1].text.strip()
-            population_2020 = cells[2].text.strip()
-            population_2015 = cells[3].text.strip()
-            population_2010 = cells[4].text.strip()
-            population_2005 = cells[5].text.strip()
-            population_2000 = cells[6].text.strip()
-            population_1995 = cells[7].text.strip()
-            population_1990 = cells[8].text.strip()
-            population_1985 = cells[9].text.strip()
+        rank = row.find('div', {'class': 'rank first table-cell rank'})
+        name = row.find('div', {'class': 'personName second table-cell name'})
+        net_worth = row.find('div', {'class': 'finalWorth table-cell net worth'})
+        industry = row.find('div', {'class': 'category table-cell industry'})
 
-            print(name, population_2020, population_2015, population_2010, population_2005, population_2000, population_1995, population_1990, population_1985)
-else:
-    print('not_possible')
+        if name is not None:
+            results.append({
+                'Rank': rank.text.strip(),
+                'Name': name.text.strip(),
+                'Net Worth': net_worth.text.strip(),
+                'Industry': industry.text.strip()})
+
+df = pd.DataFrame(results)
+df.to_excel('IndiaBillionaires6.xlsx', index=False)

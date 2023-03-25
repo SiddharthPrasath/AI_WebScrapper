@@ -1,39 +1,27 @@
 import requests
+import pandas as pd
 from bs4 import BeautifulSoup
-import csv
 
-# URL for the Wikipedia page
-url = 'https://en.wikipedia.org/wiki/List_of_Indian_state_birds'
+url = "https://www.equitymaster.com/stock-screener/top-banking-companies-in-india"
+html_content = requests.get(url).text
 
-# Send a GET request to the URL
-response = requests.get(url)
+soup = BeautifulSoup(html_content, "html.parser")
+table = soup.find_all("table", {"class": "tableData"})[0]
+headers = []
+for th in table.find_all("th"):
+    headers.append(th.get_text().strip())
 
-# Parse the HTML content using BeautifulSoup
-soup = BeautifulSoup(response.content, 'html.parser')
+result = []
+for row in table.find_all("tr"):
+    d = []
+    cells = row.findAll(["td", "th"])
+    for cell in cells:
+        d.append(cell.get_text().strip())
+    if len(d) == len(headers):
+        result.append(d)
 
-# Find the table containing the data
-table = soup.find('table', {'class': 'wikitable sortable'})
-
-# Find all the rows in the table
-rows = table.find_all('tr')
-
-# Create a new CSV file and write the headers
-with open('indian_state_birds.csv', mode='w', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow(['State', 'Common name', 'Scientific name', 'Image'])
-
-    # Loop through all the rows and extract the data
-    for row in rows[1:]:
-        # Find all the cells in the row
-        cells = row.find_all('td')
-
-        # Extract the data from the cells
-        state = cells[0].text.strip()
-        common_name = cells[1].text.strip()
-        scientific_name = cells[2].text.strip()
-        image = cells[3].find('a', class_='image')
-
-        # Write the data to the CSV file
-        writer.writerow([state, common_name, scientific_name, image])
-
-print('Data scraped successfully!')
+df = pd.DataFrame(result, columns=headers)
+df = df[df['Revenue-Rs.Cr']>='1']
+df = df.iloc[:, 1:]
+print(df)
+df.to_excel('output.xlsx', index=False)

@@ -5,6 +5,7 @@ from googlesearch import search
 import json
 import requests
 from bs4 import BeautifulSoup
+import re
 
 def configure():
     load_dotenv()
@@ -66,21 +67,15 @@ def convert_json_to_list(json_string):
         return result
 
 
-
-
-
-
 def search_results(query):
     websites=""
     for url in search(query, tld="co.in", stop=10):
         websites=websites+url+" "
     return websites
 
-#this function will he used to get source code
-import requests
-from bs4 import BeautifulSoup
 
-def get_source_code(url):
+
+def get_source_code_old(url):
     try:
         headers={'User-Agent':'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response=requests.get(url,headers=headers,timeout=10)
@@ -96,6 +91,33 @@ def get_source_code(url):
         print(f"Error occurred: {e}")
         return "None"
 
+def get_source_code(url):
+    try:
+        headers = {'User-Agent': 'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Remove unwanted elements
+        for elem in soup(["script", "style", "nav", "footer", "head", "header", "aside", "form", "noscript", "meta", "link", "comment"]):
+            elem.extract()
+        
+        # Remove whitespace outside of quotes
+        body = soup.find('body')
+        body_str = str(body)
+        body_str = re.sub(r'(?<=[^\s="])\s+(?![^"]*")|(?<!^)\s+(?=[^"]*(?:"[^"]*"[^"]*)*$)', '', body_str)
+
+        # Extract middle 220 lines
+        chunk_size = 80
+        chunks = [body_str[i:i+chunk_size] for i in range(0, len(body_str), chunk_size)]
+        middle_index = len(chunks) // 2
+        middle_chunks = chunks[middle_index - 70:middle_index + 70]
+
+        # Remove newlines and return
+        return ''.join(middle_chunks).replace("\n", "")
+    
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        return "None"
     
 #this function will write code to create the web scrapper
 def web_scrapper(query,link,result_dict,message):

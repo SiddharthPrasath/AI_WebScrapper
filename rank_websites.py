@@ -49,7 +49,7 @@ def important_columns(message):
 
 #Convert JSON to Python Dictionary
 def convert_json_to_dict(json_string):
-    json_dict = json.loads(json_string)
+    json_dict = json_string
 
     result_dict = {}
     for priority, columns in json_dict.items():
@@ -170,12 +170,29 @@ def run_scrapper(scraper):
         print(f"Error occurred: {e}")
         #return error message
         return str(e)
+    
+def clean_gpt_response_to_json(response):
+    # Check if the response is a JSON string or not
+    try:
+        json_data = json.loads(response)
+        return json_data
+    except ValueError:
+        # If the response contains both JSON and text, extract only the JSON data
+        json_start = response.find('{')
+        json_end = response.rfind('}')
+        if json_start != -1 and json_end != -1:
+            json_data = response[json_start:json_end+1]
+            return json.loads(json_data)
+    # If the response is neither JSON nor contains JSON, return None
+    return None
 configure()
 query=input("What data are you looking for?: ")
 websites=search_results(query)
 
 json_string = important_columns(query) #ChatGPT will Print the JSON string
-result_dict = convert_json_to_dict(json_string) 
+cleaned_json_string = clean_gpt_response_to_json(json_string)
+print(cleaned_json_string)
+result_dict = convert_json_to_dict(cleaned_json_string) 
 print(result_dict)
 json_string2=rank_websites(query,websites,result_dict)
 try:
@@ -185,13 +202,18 @@ except:
     json_string2=rank_websites(query,websites,result_dict)
     result_list = convert_json_to_list(json_string2)
 
-for i in range(0,5):
-    source_code=get_source_code(result_list[i][1])
+for i in range(0, 5):
+    source_code = get_source_code(result_list[i][1])
     print(source_code)
-    scraper=web_scrapper(query,result_list[i][1],result_dict,source_code)
-    if scraper!="not_possible":
+    try:
+        scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
+    except Exception as e:
+        print("too much tokens")
+        continue
+    if scraper != "not_possible":
         break
-    
+        
+    # add the code that runs when web_scrapper succeeds here
 
 
 

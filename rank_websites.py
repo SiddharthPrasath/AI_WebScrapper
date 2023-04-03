@@ -13,7 +13,7 @@ def configure():
 
 def rank_websites(query,message,result_dict):
     messages = [
-    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+". Rank Wiki Sites always higher. Do not reply with any text other than JSON."},
+    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+". Do not reply with any text other than JSON."},
 ]
     if message:
         messages.append(
@@ -85,7 +85,7 @@ def get_source_code_old(url):
         body=soup.body
         body_lines=str(body.prettify()).split('\n')
         middle_index=len(body_lines)//2
-        middle_lines=body_lines[middle_index-110:middle_index+110]
+        middle_lines=body_lines[middle_index-150:middle_index+150]
         return ''.join(middle_lines).replace(" ", "").replace("\n", "")
     except Exception as e:
         print(f"Error occurred: {e}")

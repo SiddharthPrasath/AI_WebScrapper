@@ -13,7 +13,7 @@ def configure():
 
 def rank_websites(query,message,result_dict):
     messages = [
-    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+". Do not reply with any text other than JSON."},
+    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+". Rank Wiki Sites always higher. Do not reply with any text other than JSON."},
 ]
     if message:
         messages.append(
@@ -75,7 +75,7 @@ def search_results(query):
 
 
 
-def get_source_code_old(url):
+def get_source_code(url):
     try:
         headers={'User-Agent':'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response=requests.get(url,headers=headers,timeout=10)
@@ -85,13 +85,13 @@ def get_source_code_old(url):
         body=soup.body
         body_lines=str(body.prettify()).split('\n')
         middle_index=len(body_lines)//2
-        middle_lines=body_lines[middle_index-150:middle_index+150]
+        middle_lines=body_lines[middle_index-115:middle_index+115]
         return ''.join(middle_lines).replace(" ", "").replace("\n", "")
     except Exception as e:
         print(f"Error occurred: {e}")
         return "None"
 
-def get_source_code(url):
+def get_source_code_new(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -110,7 +110,7 @@ def get_source_code(url):
         chunk_size = 80
         chunks = [body_str[i:i+chunk_size] for i in range(0, len(body_str), chunk_size)]
         middle_index = len(chunks) // 2
-        middle_chunks = chunks[middle_index - 70:middle_index + 70]
+        middle_chunks = chunks[middle_index - 100:middle_index + 100]
 
         # Remove newlines and return
         return ''.join(middle_chunks).replace("\n", "")
@@ -230,6 +230,7 @@ for i in range(0, 5):
     try:
         scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
     except Exception as e:
+        print(f"Error occurred: {e}")
         print("too much tokens")
         continue
     if scraper != "not_possible":

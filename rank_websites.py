@@ -6,6 +6,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import re
+from flask import Flask, request, render_template, send_file
 
 def configure():
     load_dotenv()
@@ -30,7 +31,8 @@ def rank_websites(query,message,result_dict):
 
 # This function will make an api call to extract the important columns that the dataset that the user is looking for could have and assign a priority score to each column out of 5. 5 being the highest priority.
 
-def important_columns(message):
+def important_columns(query):
+    message= "Reply with the list of columns along with their priority and reply only in JSON"
     messages = [
     {"role": "system", "content": "The user is looking for a Dataset on" + query + ". Come up with list of columns that the dataset could have and assign a priority score to each column out of 5. 5-Highest, 4-High, 3-Medium, 2-Low, 1-Lowest. Highest Priority means without that coloumn the dataset wouldn't fulfill user's request. Send Back only the coloumns and no other text. Send back the columns in JSON format. Only send back JSON and No other text. The JSON format should be like this: " + '{5":["column1","column2"],"4":["column3","column4"],"3":["column5","column6"],"2":["column7","column8"],"1":["column9","column10"]}'},
 ]
@@ -122,7 +124,7 @@ def get_source_code_new(url):
 #this function will write code to create the web scrapper
 def web_scrapper(query,link,result_dict,message):
     messages = [
-    {"role": "system", "content": "You are a developer. You need to write python code to scrape this website:" + link + ". Write the code for a python scrapper, the dataset the user is looking for is " + query + ". The user will share a snippet from the source code of the website. Analyze the source code to find elements and class names that you need to scrape if necessary. For eg: wiki tables might often have th as well as td in their tables as records which causes errors in the scrappers you write, so you can analyze the source code to see which columns/records are th and which is td. Remember that there might be advertisements on the website so make sure the scrapper is scrapping throughout the entire website using find all. Make sure you add coloumn titles, Scrape and return the data only in a Excel file. Only return Python Code, do not return any other words other than the code. If the data is behind a paywall reply with only not_possible, but only if it is behind a paywall, if you are only able to scrape parts of the dataset the user is looking for its fine, reply with the code anyways"},
+    {"role": "system", "content": "You are a developer. You need to write python code to scrape this website:" + link + ". Write the code for a python scrapper, the dataset the user is looking for is " + query + ". The user will share a snippet from the source code of the website. Analyze the source code to find elements and class names that you need to scrape if necessary. For eg: wiki tables might often have th as well as td in their tables as records which causes errors in the scrappers you write, so you can analyze the source code to see which columns/records are th and which is td. Remember that there might be advertisements on the website so make sure the scrapper is scrapping throughout the entire website using find all. Make sure you add coloumn titles, Scrape and return the data only in a Excel file. The name of the excel file should be Dataset. Only return Python Code, do not return any other words other than the code. If the data is behind a paywall reply with only not_possible, but only if it is behind a paywall, if you are only able to scrape parts of the dataset the user is looking for its fine, reply with the code anyways"},
 ]
     if message:
         messages.append(
@@ -207,34 +209,75 @@ def clean_gpt_response_to_json(response):
             return json.loads(json_data)
     # If the response is neither JSON nor contains JSON, return None
     return None
-configure()
-query=input("What data are you looking for?: ")
-websites=search_results(query)
 
-json_string = important_columns(query) #ChatGPT will Print the JSON string
-cleaned_json_string = clean_gpt_response_to_json(json_string)
-print(cleaned_json_string)
-result_dict = convert_json_to_dict(cleaned_json_string) 
-print(result_dict)
-json_string2=rank_websites(query,websites,result_dict)
-try:
-    result_list = convert_json_to_list(json_string2)
-    print(result_list)
-except:
-    json_string2=rank_websites(query,websites,result_dict)
-    result_list = convert_json_to_list(json_string2)
 
-for i in range(0, 5):
-    source_code = get_source_code(result_list[i][1])
-    print(source_code)
-    try:
-        scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        print("too much tokens")
-        continue
-    if scraper != "not_possible":
-        break
+app = Flask(__name__)
+
+@app.route('/', methods=['GET', 'POST'])
+def index():
+     return render_template('index.html')
+
+@app.route('/scrape', methods=['POST'])
+def scrape():
+        query = request.form['query']
+        configure()
+        websites=search_results(query)
+        json_string = important_columns(query) #ChatGPT will Print the JSON string
+        cleaned_json_string = clean_gpt_response_to_json(json_string)
+        print(cleaned_json_string)
+        result_dict = convert_json_to_dict(cleaned_json_string) 
+        print(result_dict)
+        json_string2=rank_websites(query,websites,result_dict)
+        try:
+            result_list = convert_json_to_list(json_string2)
+            print(result_list)
+        except:
+            json_string2=rank_websites(query,websites,result_dict)
+            result_list = convert_json_to_list(json_string2)
+
+        for i in range(0, 5):
+            source_code = get_source_code(result_list[i][1])
+            print(source_code)
+            try:
+                scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
+            except Exception as e:
+                print(f"Error occurred: {e}")
+                print("too much tokens")
+                continue
+            if scraper != "not_possible":
+                break
+        return send_file('Dataset.xlsx', as_attachment=True)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+# configure()
+# query=input("What data are you looking for?: ")
+# websites=search_results(query)
+
+# json_string = important_columns(query) #ChatGPT will Print the JSON string
+# cleaned_json_string = clean_gpt_response_to_json(json_string)
+# print(cleaned_json_string)
+# result_dict = convert_json_to_dict(cleaned_json_string) 
+# print(result_dict)
+# json_string2=rank_websites(query,websites,result_dict)
+# try:
+#     result_list = convert_json_to_list(json_string2)
+#     print(result_list)
+# except:
+#     json_string2=rank_websites(query,websites,result_dict)
+#     result_list = convert_json_to_list(json_string2)
+
+# for i in range(0, 5):
+#     source_code = get_source_code(result_list[i][1])
+#     print(source_code)
+#     try:
+#         scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
+#     except Exception as e:
+#         print(f"Error occurred: {e}")
+#         print("too much tokens")
+#         continue
+#     if scraper != "not_possible":
+#         break
         
     # add the code that runs when web_scrapper succeeds here
 

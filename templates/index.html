@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Web Scraper App</title>
+  </head>
+  <body>
+    <h1>Web Scraper App</h1>
+    <form method="POST" action="{{ url_for('scrape') }}">
+      <label for="query">Enter your search query:</label>
+      <input type="text" name="query" id="query" />
+      <button type="submit">Search</button>
+    </form>
+  </body>
+</html>

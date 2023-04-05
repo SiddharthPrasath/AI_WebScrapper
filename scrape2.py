@@ -2,26 +2,39 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-url = 'https://en.wikipedia.org/wiki/List_of_Indians_by_net_worth'
+# use requests to get the HTML content of the website
+url = 'https://forbesindia.com/lists/2019-celebrity-100/1819/all'
 response = requests.get(url)
+html_content = response.content
 
-soup = BeautifulSoup(response.text, 'html.parser')
+# use BeautifulSoup to parse the HTML content
+soup = BeautifulSoup(html_content, 'html.parser')
 
-table = soup.find('table', {'class': 'wikitable sortable'})
+# find the table that contains the data
+table = soup.find('table', attrs={'class': 'tbldata14'})
 
-table_head = table.find('thead')
-header_cols = table_head.find_all('th')
-headers = [col.text.strip() for col in header_cols]
+# create a list to store the column titles
+columns = []
 
-table_body = table.find('tbody')
-rows = table_body.find_all('tr')[1:]
+# loop through the header row and add each column title to the columns list
+header_row = table.find('tr', attrs={'class': 'tbldatahdr'})
+for header in header_row.find_all('th'):
+    columns.append(header.text.strip())
 
+# create a list to store the data
 data = []
+
+# loop through each row of the table and add each data point to the data list
+rows = table.find_all('tr', attrs={'class': 'evenrow'})
+rows.extend(table.find_all('tr', attrs={'class': 'oddrow'}))
 for row in rows:
-    cols = row.find_all(['th', 'td'])
-    cols = [col.text.strip() for col in cols]
-    data.append(cols)
+    data_row = []
+    for item in row.find_all('td'):
+        data_row.append(item.text.strip())
+    data.append(data_row)
 
-df = pd.DataFrame(data, columns=headers)
+# convert the data and columns lists to a pandas DataFrame
+df = pd.DataFrame(data, columns=columns)
 
-df.to_excel('indian_billionaires.xlsx', index=False)
+# export the DataFrame to an Excel file
+df.to_excel('forbes_india_celebrity_100_2019.xlsx', index=False)

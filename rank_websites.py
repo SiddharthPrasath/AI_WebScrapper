@@ -77,7 +77,7 @@ def search_results(query):
 
 
 
-def get_source_code(url):
+def get_source_code_old(url):
     try:
         headers={'User-Agent':'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response=requests.get(url,headers=headers,timeout=10)
@@ -93,7 +93,7 @@ def get_source_code(url):
         print(f"Error occurred: {e}")
         return "None"
 
-def get_source_code_new(url):
+def get_source_code(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -112,7 +112,7 @@ def get_source_code_new(url):
         chunk_size = 80
         chunks = [body_str[i:i+chunk_size] for i in range(0, len(body_str), chunk_size)]
         middle_index = len(chunks) // 2
-        middle_chunks = chunks[middle_index - 100:middle_index + 100]
+        middle_chunks = chunks[middle_index - 60:middle_index + 60]
 
         # Remove newlines and return
         return ''.join(middle_chunks).replace("\n", "")
@@ -224,7 +224,7 @@ def scrape():
         websites=search_results(query)
         json_string = important_columns(query) #ChatGPT will Print the JSON string
         cleaned_json_string = clean_gpt_response_to_json(json_string)
-        print(cleaned_json_string)
+        # print(cleaned_json_string)
         result_dict = convert_json_to_dict(cleaned_json_string) 
         print(result_dict)
         json_string2=rank_websites(query,websites,result_dict)
@@ -250,6 +250,11 @@ def scrape():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+# https://sharegpt.com/c/HeqAGXz
+# https://sharegpt.com/c/C7wUG5v
+# https://sharegpt.com/c/DlIK6uQ
+# https://sharegpt.com/c/Ve3t0yN
 # configure()
 # query=input("What data are you looking for?: ")
 # websites=search_results(query)

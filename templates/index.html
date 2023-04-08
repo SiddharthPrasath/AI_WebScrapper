@@ -1,14 +1,48 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Web Scraper App</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataAI</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
   </head>
   <body>
-    <h1>Web Scraper App</h1>
-    <form method="POST" action="{{ url_for('scrape') }}">
-      <label for="query">Enter your search query:</label>
-      <input type="text" name="query" id="query" />
-      <button type="submit">Search</button>
-    </form>
+    <div class="logo">
+      <h1 style="font-family: 'Pacifico', cursive">
+        Data<span style="color: #ff6666">.ai</span>
+      </h1>
+    </div>
+    <div class="container">
+      <div class="response-wrapper">
+        <div id="response"></div>
+      </div>
+      <div class="input-wrapper">
+        <form id="search-form" method="POST" action="{{ url_for('scrape') }}">
+          <div class="form-group">
+            <input
+              type="text"
+              name="query"
+              id="query"
+              placeholder="Enter your query"
+            />
+            <button type="submit" id="submit-btn">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M21.707 12.293a.999.999 0 0 0 0-1.414l-4-4a.999.999 0 0 0-1.414 1.414L18.586 11H2a1 1 0 0 0 0 2h16.586l-3.293 3.293a.999.999 0 1 0 1.414 1.414l4-4a.999.999 0 0 0 0-1.414z"
+                />
+              </svg>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
   </body>
 </html>

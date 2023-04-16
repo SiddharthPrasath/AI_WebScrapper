@@ -6,11 +6,16 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import re
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, session 
+import pandas as pd
+import io
+import flask
 
 def configure():
     load_dotenv()
     openai.api_key = os.getenv("OPENAI_API_KEY")
+    # app.secret_key = os.getenv('SECRET_KEY', 'default_secret_key')
+
 
 def rank_websites(query,message,result_dict):
     messages = [
@@ -77,7 +82,7 @@ def search_results(query):
 
 
 
-def get_source_code_old(url):
+def get_source_code(url):
     try:
         headers={'User-Agent':'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response=requests.get(url,headers=headers,timeout=10)
@@ -93,7 +98,7 @@ def get_source_code_old(url):
         print(f"Error occurred: {e}")
         return "None"
 
-def get_source_code(url):
+def get_source_code_new(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -109,10 +114,10 @@ def get_source_code(url):
         body_str = re.sub(r'(?<=[^\s="])\s+(?![^"]*")|(?<!^)\s+(?=[^"]*(?:"[^"]*"[^"]*)*$)', '', body_str)
 
         # Extract middle 220 lines
-        chunk_size = 80
+        chunk_size = 70
         chunks = [body_str[i:i+chunk_size] for i in range(0, len(body_str), chunk_size)]
         middle_index = len(chunks) // 2
-        middle_chunks = chunks[middle_index - 60:middle_index + 60]
+        middle_chunks = chunks[middle_index - 50:middle_index + 50]
 
         # Remove newlines and return
         return ''.join(middle_chunks).replace("\n", "")
@@ -122,7 +127,7 @@ def get_source_code(url):
         return "None"
     
 #this function will write code to create the web scrapper
-def web_scrapper(query,link,result_dict,message):
+def web_scrapper_old(query,link,result_dict,message):
     messages = [
     {"role": "system", "content": "You are a developer. You need to write python code to scrape this website:" + link + ". Write the code for a python scrapper, the dataset the user is looking for is " + query + ". The user will share a snippet from the source code of the website. Analyze the source code to find elements and class names that you need to scrape if necessary. For eg: wiki tables might often have th as well as td in their tables as records which causes errors in the scrappers you write, so you can analyze the source code to see which columns/records are th and which is td. Remember that there might be advertisements on the website so make sure the scrapper is scrapping throughout the entire website using find all. Make sure you add coloumn titles, Scrape and return the data only in a Excel file. The name of the excel file should be Dataset. Only return Python Code, do not return any other words other than the code. If the data is behind a paywall reply with only not_possible, but only if it is behind a paywall, if you are only able to scrape parts of the dataset the user is looking for its fine, reply with the code anyways"},
 ]
@@ -139,10 +144,13 @@ def web_scrapper(query,link,result_dict,message):
         return reply
 
     messages.append({"role": "assistant", "content": reply})
+
     scraper=clean_gpt_output(reply)
+    scraper=modify_python_code(scraper)
     print(scraper)
     try:
-        exec(scraper)
+        response = execute_scrapper(scraper)
+        return response
     except Exception as e:
         print(f"Error occurred: {e}")
         #return error message
@@ -154,11 +162,14 @@ def web_scrapper(query,link,result_dict,message):
         )
         new_scrapper = chat.choices[0].message.content
         new_scrapper=clean_gpt_output(new_scrapper)
+        new_scrapper=modify_python_code(new_scrapper)
+
         messages.append({"role": "assistant", "content": new_scrapper})
 
         print(f"DataGPT: {new_scrapper}")
         try:
-            exec(new_scrapper)
+            response = execute_scrapper(new_scrapper)
+            return response
         except Exception as e:
             print(f"Error occurred: {e}")
             #return error message
@@ -170,10 +181,62 @@ def web_scrapper(query,link,result_dict,message):
             )
             new_scrapper = chat.choices[0].message.content
             new_scrapper=clean_gpt_output(new_scrapper)
+            new_scrapper=modify_python_code(new_scrapper)
+
             messages.append({"role": "assistant", "content": new_scrapper})
 
             print(f"DataGPT: {new_scrapper}")
-            exec(new_scrapper)
+            response = download_file_scraper(new_scrapper, "xlsx")
+            return response
+def web_scrapper(query,link,result_dict,message):
+    messages = [
+    {"role": "system", "content": "You are a developer. You need to write python code to scrape this website:" + link + ". Write the code for a python scrapper, the dataset the user is looking for is " + query + ". The user will share a snippet from the source code of the website. Analyze the source code to find elements and class names that you need to scrape if necessary. For eg: wiki tables might often have th as well as td in their tables as records which causes errors in the scrappers you write, so you can analyze the source code to see which columns/records are th and which is td. Remember that there might be advertisements on the website so make sure the scrapper is scrapping throughout the entire website using find all. Make sure you add coloumn titles, Scrape and return the data only in a Excel file. The name of the excel file should be Dataset. Only return Python Code, do not return any other words other than the code. If the data is behind a paywall reply with only not_possible, but only if it is behind a paywall, if you are only able to scrape parts of the dataset the user is looking for its fine, reply with the code anyways"},
+    ]
+    if message:
+        messages.append(
+            {"role": "user", "content": message},
+        )
+        chat = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=messages
+        )
+    reply = chat.choices[0].message.content
+    print(f"DataGPT: {reply}")
+    if reply == "not_possible":
+        return reply
+
+    messages.append({"role": "assistant", "content": reply})
+    scraper=reply
+    attempts = 0
+    while attempts < 3:
+        try:
+            response,df,num_rows = execute_scrapper(scraper)
+            return response,df,num_rows
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            #return error message
+            messages.append(
+                        {"role": "user", "content": f"Error occurred: {e}. Please update the code and send back the code again, only send back the code, do not send back any other text"},
+                    )
+            chat = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo", messages=messages
+            )
+            new_scraper = chat.choices[0].message.content
+
+            messages.append({"role": "assistant", "content": new_scraper})
+
+            print(f"DataGPT: {new_scraper}")
+            scraper = new_scraper
+            attempts += 1
+
+    return "not_possible"
+def execute_scrapper(scraper):
+    scraper=clean_gpt_output(scraper)
+    scraper=modify_python_code(scraper)
+    print(scraper)
+    response, df, num_rows = scrape_and_preview(scraper)
+
+    return response,df,num_rows
+
 def clean_gpt_output(output):
     code_lines = []
     is_python = True
@@ -187,13 +250,7 @@ def clean_gpt_output(output):
             code_lines.append(line)
     return '\n'.join(code_lines)
 
-def run_scrapper(scraper):
-    try:
-        exec(scraper)
-    except Exception as e:
-        print(f"Error occurred: {e}")
-        #return error message
-        return str(e)
+
     
 def clean_gpt_response_to_json(response):
     # Check if the response is a JSON string or not
@@ -209,9 +266,81 @@ def clean_gpt_response_to_json(response):
             return json.loads(json_data)
     # If the response is neither JSON nor contains JSON, return None
     return None
+def modify_python_code(code_str):
+    # Find the line that writes the dataframe to an excel file
+    # Find the line that writes the dataframe to an excel file
+    excel_line_start = code_str.find(".to_excel(")
+    excel_line_end = code_str.find(")", excel_line_start) + 1
+    excel_line = code_str[excel_line_start:excel_line_end]
 
+    # Remove the entire line from the code string
+    excel_line_start = code_str.rfind("\n", 0, excel_line_start) + 1
+    excel_line_end = code_str.find("\n", excel_line_start)
+    if excel_line_end == -1:
+        excel_line_end = len(code_str)
+    code_str = code_str[:excel_line_start] + code_str[excel_line_end:]
+    # Remove the line from the code string
+   
+    
+    return code_str
+def download_file_scraper(df, file_type):
 
+    
+    # Get the DataFrame object from the dictionary
+    df = df
+    # Create a BytesIO object to hold the file data
+    file_buffer = io.BytesIO()
+
+    # Write the DataFrame object to the buffer, depending on the file type
+    if file_type == 'csv':
+        df.to_csv(file_buffer, index=False)
+    elif file_type == 'xlsx':
+        df.to_excel(file_buffer, index=False)
+
+    # Create a Flask response object with the file data
+    response = flask.make_response(file_buffer.getvalue())
+
+    # Set the appropriate Content-Type header
+    if file_type == 'csv':
+        response.headers['Content-Type'] = 'text/csv'
+    elif file_type == 'excel':
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+    # Set the Content-Disposition header to force download of the file
+    response.headers['Content-Disposition'] = 'attachment; filename=data.' + file_type
+
+    return response
+
+def scrape_and_preview(scraper_code):
+    # Create an empty dictionary to store the variables defined inside the exec function
+    exec_globals = {}
+
+    # Execute the scraper code in the exec function, passing the empty dictionary as the global namespace
+    exec(scraper_code, exec_globals)
+
+    # Get the DataFrame object from the dictionary
+    df = exec_globals.get('df')
+
+    # Get the total number of rows in the DataFrame
+    num_rows = len(df)
+
+    # Get the first, middle, and last rows of the DataFrame
+    preview_rows = pd.concat([df.head(5),df.tail(5)])
+    #df.iloc[len(df)//2:len(df)//2+1]],
+
+    # Generate an HTML table for the preview rows
+    preview_html = preview_rows.to_html(index=False)
+
+    # Create a Flask response object with the preview HTML
+    response = flask.make_response(preview_html)
+
+    # Set the appropriate Content-Type header
+    response.headers['Content-Type'] = 'text/html'
+
+    return response, df , num_rows
 app = Flask(__name__)
+app.secret_key = 'abdahvyqf9uquofb'
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -239,15 +368,24 @@ def scrape():
             source_code = get_source_code(result_list[i][1])
             print(source_code)
             try:
-                scraper = web_scrapper(query, result_list[i][1], result_dict, source_code)
+                response, df, num_rows = web_scrapper(query, result_list[i][1], result_dict, source_code)
+                
             except Exception as e:
                 print(f"Error occurred: {e}")
                 print("too much tokens")
                 continue
-            if scraper != "not_possible":
-                break
-        return send_file('Dataset.xlsx', as_attachment=True)
+            if response != "not_possible":
+                session['df'] = df.to_json()
+                return flask.render_template('preview.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
+                
+        return flask.render_template('preview.html', preview_html=preview_response.data.decode('utf-8'))
+@app.route("/download")
+def download_excel():
+    df = pd.read_json(session['df'])    
+    response=download_file_scraper(df, 'xlsx')
 
+    
+    return response
 if __name__ == '__main__':
     app.run(debug=True)
 

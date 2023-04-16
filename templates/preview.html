@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Preview</title>
+    <style>
+      table {
+        border-collapse: collapse;
+        margin: 20px;
+      }
+      th,
+      td {
+        border: 1px solid black;
+        padding: 5px;
+      }
+      th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>Preview</h1>
+    <p>Total rows: {{ num_rows }}</p>
+    {{ preview_html|safe }}
+    <p><a href="/download">Download</a></p>
+  </body>
+</html>

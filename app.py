@@ -211,6 +211,8 @@ def web_scrapper(query,link,result_dict,message):
     while attempts < 3:
         try:
             response,df,num_rows = execute_scrapper(scraper)
+            if num_rows <=3:
+                raise Exception("No rows are in the Dataset")
             return response,df,num_rows
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -229,7 +231,7 @@ def web_scrapper(query,link,result_dict,message):
             scraper = new_scraper
             attempts += 1
 
-    return "not_possible"
+    return "not_possible","",""
 def execute_scrapper(scraper):
     scraper=clean_gpt_output(scraper)
     scraper=modify_python_code(scraper)
@@ -384,8 +386,7 @@ def update():
 @app.route('/scrape', methods=['POST'])
 def scrape():
         # query = request.form['query']
-        data = request.get_json()
-        query = data['query']
+        query = request.get_json().get('message')
         configure()
         websites=search_results(query)
         json_string = important_columns(query) #ChatGPT will Print the JSON string
@@ -413,9 +414,10 @@ def scrape():
                 continue
             if response != "not_possible":
                 session['df'] = df.to_json()
-                return flask.render_template('preview.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
-                
-        return flask.render_template('preview.html', preview_html=response.data.decode('utf-8'))
+                # return flask.render_template('index.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
+                return flask.jsonify(response=response.data.decode('utf-8'), num_rows=num_rows)
+    
+        return flask.render_template('index.html', preview_html=response.data.decode('utf-8'))
 
 @app.route('/get_flashed_messages')
 def get_flashed_messages():

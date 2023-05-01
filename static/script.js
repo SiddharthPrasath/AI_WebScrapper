@@ -23,11 +23,9 @@ function addMessage(message, sender) {
 function addLoadingMessage() {
   const messageContainer = document.createElement("div");
   messageContainer.classList.add("message-container");
-  messageContainer.classList.add("loading-message");
   messageContainer.classList.add("bot");
 
   const loadingMessage = document.createElement("div");
-  loadingMessage.classList.add("message-bubble");
 
   let dots = 0;
   const intervalId = setInterval(() => {
@@ -35,12 +33,13 @@ function addLoadingMessage() {
       "Please wait while I search for your data" + ".".repeat(dots);
     dots = (dots + 1) % 4;
   }, 500);
-
+  loadingMessage.classList.add("message-bubble");
+  loadingMessage.classList.add("loading-message");
   messageContainer.appendChild(loadingMessage);
 
   const chatbox = document.getElementById("response");
   chatbox.appendChild(messageContainer);
-  chatbox.scrollTop = chatbox.scrollHeight;
+  // chatbox.scrollTop = chatbox.scrollHeight;
 
   // Save the interval ID so that we can stop the interval later
   messageContainer.dataset.intervalId = intervalId;
@@ -53,6 +52,7 @@ function addDownloadbutton() {
 
   const downloadButton = document.createElement("button");
   downloadButton.classList.add("button");
+  downloadButton.classList.add("download-button");
   downloadButton.textContent = "Download";
 
   downloadButton.addEventListener("click", function () {
@@ -85,7 +85,7 @@ function scrollToBottom() {
 //WHEN DOWNLOAD BUTTON IS CLICKEd IT SHOULD GO TO THE /DOWNLOAD ENDPOINT
 
 // Function to add bot message to the chat window
-function addBotMessage(message, type) {
+function addBotMessage(response, type) {
   // Stop the loading message interval if it exists
   const loadingMessage = document.querySelector(".loading-message");
   if (loadingMessage) {
@@ -99,13 +99,35 @@ function addBotMessage(message, type) {
     // addMessage("Here is a preview of the data", "bot");
     addMessage(
       "I found " +
-        message.num_rows +
+        response.num_rows +
         " rows Total, this is a preview of the Data: ",
       "bot"
     );
-    addtablemessage(message.response);
+    addtablemessage(response.response);
     addDownloadbutton();
   }
+}
+function killLoadingmessage() {
+  const loadingMessage = document.querySelector(".loading-message");
+  if (loadingMessage) {
+    const intervalId = loadingMessage.parentNode.dataset.intervalId;
+    clearInterval(intervalId);
+  }
+}
+function addPreviewmessage(response) {
+  // Stop the loading message interval if it exists
+  killLoadingmessage();
+
+  addMessage("Data Search Completed!", "bot");
+  // addMessage("Here is a preview of the data", "bot");
+  addMessage(
+    "I found " +
+      response.num_rows +
+      " rows Total, this is a preview of the Data: ",
+    "bot"
+  );
+  addtablemessage(response.preview);
+  addDownloadbutton();
 }
 function addtablemessage(response) {
   const messageContainer = document.createElement("div");
@@ -123,7 +145,7 @@ function addtablemessage(response) {
   chatbox.scrollTop = chatbox.scrollHeight;
 }
 window.onload = function () {
-  addBotMessage("What kind of data are you looking for?");
+  addMessage("What kind of data are you looking for?", "bot");
 };
 
 // Function to handle form submission
@@ -147,8 +169,15 @@ function handleUserInput(event) {
     .then((response) => response.json())
     .then((data) => {
       // Add bot message with response from backend
-
-      addBotMessage(data, "preview");
+      // if data has type preview then add preview message
+      if (data.type == "preview") {
+        addPreviewmessage(data, "preview");
+      }
+      if (data.type == "error") {
+        //send message to user that there was an error
+        killLoadingmessage();
+        addMessage(data.message, "bot");
+      }
     })
     .catch((error) => {
       console.error("Error:", error);

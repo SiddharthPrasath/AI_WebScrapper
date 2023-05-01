@@ -109,7 +109,7 @@ svg {
   display: inline-block;
   padding: 10px;
   border-radius: 12px;
-  background-color: #090505;
+  background-color: #0f0aa1;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.1);
   font-size: 16px;
   line-height: 1.4;
@@ -160,10 +160,10 @@ svg {
 }
 .button {
   padding: 10px 20px;
-  background-color: #ff6666;
+  background-color: #0f0aa1;
   color: #fff;
   border: none;
-  border-radius: 20px;
+  border-radius: 10px;
   font-size: 16px;
   cursor: pointer;
   margin-top: 5px;
@@ -171,5 +171,6 @@ svg {
 }
 
 .button:hover {
-  background-color: #ff4d4d;
+  background-color: #0f08cf;
+  color: #fff;
 }

@@ -6,12 +6,11 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import re
-from flask import Flask, request, render_template, send_file, session , flash, get_flashed_messages
+from flask import Flask, request, render_template, send_file, session , flash, get_flashed_messages, Response
 import pandas as pd
 import io
 import flask
-from flask import Response
-
+from flask_session import Session
 def configure():
     load_dotenv()
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -344,45 +343,14 @@ def scrape_and_preview(scraper_code):
 app = Flask(__name__)
 app.secret_key = 'abdahvyqf9uquofb'
 
+app.config['SESSION_TYPE'] = 'filesystem'
+Session(app)
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
      return render_template('index.html')
-@app.route('/update',methods=['POST'])
-def update():
-    def generate():
-        
-        # query = request.form['query']
-        query = request.get_json().get('query')
-        
-        yield 'data: Starting scraping...\n\n'
 
-        yield 'data: Searching for results...\n\n'
-        websites = search_results(query)
-        
-        yield 'data: Parsing result columns...\n\n'
-        json_string = important_columns(query)
-        cleaned_json_string = clean_gpt_response_to_json(json_string)
-        result_dict = convert_json_to_dict(cleaned_json_string)
-        
-        yield 'data: Ranking websites...\n\n'
-        json_string2 = rank_websites(query, websites, result_dict)
-        result_list = convert_json_to_list(json_string2)
-        
-        yield 'data: Scraping websites...\n\n'
-        for i in range(0, 5):
-            source_code = get_source_code(result_list[i][1])
-            try:
-                response, df, num_rows = web_scrapper(query, result_list[i][1], result_dict, source_code)
-                yield 'data: Scraping completed for website ' + str(i + 1) + '...\n\n'
-            except Exception as e:
-                yield 'data: Moving on to next website because: ' + str(e) + '...\n\n'
-                continue
-        
-        yield 'data: Scraping completed...\n\n'
-        return flask.render_template('preview.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)   
-    
-    return Response(generate(), mimetype='text/event-stream')
 @app.route('/scrape', methods=['POST'])
 def scrape():
         # query = request.form['query']
@@ -413,11 +381,14 @@ def scrape():
                 # print("too much tokens")
                 continue
             if response != "not_possible":
+                # configure session type to filesystem
+
+
                 session['df'] = df.to_json()
                 # return flask.render_template('index.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
-                return flask.jsonify(response=response.data.decode('utf-8'), num_rows=num_rows)
-    
-        return flask.render_template('index.html', preview_html=response.data.decode('utf-8'))
+                return flask.jsonify(preview=response.data.decode('utf-8'), num_rows=num_rows, type= 'preview', df=df.to_json())
+
+        return flask.jsonify(message="Sorry! We couldn't find anything for your query. Please simplify your query and try again.", type= 'error')
 
 @app.route('/get_flashed_messages')
 def get_flashed_messages():

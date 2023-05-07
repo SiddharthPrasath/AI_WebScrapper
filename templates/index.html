@@ -17,9 +17,11 @@
     <div class="container">
       <div class="response-wrapper">
         <div id="response"></div>
+        <div id="flash-messages"></div>
+        <div id="output"></div>
       </div>
       <div class="input-wrapper">
-        <form id="search-form" method="POST" action="{{ url_for('scrape') }}">
+        <form id="search-form">
           <div class="form-group">
             <input
               type="text"

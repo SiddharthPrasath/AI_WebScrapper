@@ -1,3 +1,4 @@
+import traceback
 import openai
 from dotenv import load_dotenv
 import os
@@ -82,7 +83,7 @@ def search_results(query):
 
 
 
-def get_source_code(url):
+def get_source_code_old(url):
     try:
         headers={'User-Agent':'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response=requests.get(url,headers=headers,timeout=10)
@@ -95,10 +96,10 @@ def get_source_code(url):
         middle_lines=body_lines[middle_index-115:middle_index+115]
         return ''.join(middle_lines).replace(" ", "").replace("\n", "")
     except Exception as e:
-        print(f"Error occurred: {e}")
+        print(f"Not able to get Source Code: {e}")
         return "None"
 
-def get_source_code_new(url):
+def get_source_code(url):
     try:
         headers = {'User-Agent': 'Mozilla/5.0(Windows NT 10.0;Win64;x64)AppleWebKit/537.36(KHTML,like Gecko)Chrome/58.0.3029.110Safari/537.3'}
         response = requests.get(url, headers=headers, timeout=10)
@@ -123,7 +124,7 @@ def get_source_code_new(url):
         return ''.join(middle_chunks).replace("\n", "")
     
     except Exception as e:
-        print(f"Error occurred: {e}")
+        print(f"Not able to get Source Code: {e}")
         return "None"
     
 #this function will write code to create the web scrapper
@@ -207,17 +208,39 @@ def web_scrapper(query,link,result_dict,message):
     messages.append({"role": "assistant", "content": reply})
     scraper=reply
     attempts = 0
-    while attempts < 3:
+    while attempts < 4:
         try:
             response,df,num_rows = execute_scrapper(scraper)
             if num_rows <=3:
                 raise Exception("No rows are in the Dataset")
             return response,df,num_rows
         except Exception as e:
-            print(f"Error occurred: {e}")
+            if attempts == 3:
+                print(f"Error occurred: {e}")
+                break
+            # Get last line of error message
+            error_lines = traceback.format_exc().strip().split("\n")
+            last_two_lines = error_lines[-3:]
+            print(f"Error occurred: {error_lines}")
+            print(f"Error occurred: {last_two_lines}")
+            #add error messages to a different function
+            if isinstance(e, Exception) and str(e) == "No rows are in the Dataset":
+                error_message = f"There are no records in the dataset. The dataframe is empty, please update the code to resolve this error, only send back the code, do not send back any other text."
+            elif type(e).__name__ == "SyntaxError":
+                error_message = f"Please only reply with python code, do not send back any other text."
+            elif type(e).__name__ == "ValueError":
+                error_message = f"This is the error I am getting: {last_two_lines[1]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+            elif type(e).__name__ == "AttributeError":
+                error_message = f"This is the error I am getting: {last_two_lines[0]}.{last_two_lines[1]}.{last_two_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+            elif type(e).__name__ == "KeyError":
+                error_message = f"This is the error I am getting: {last_two_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+            else:
+                error_message = f"This is the error I am getting: {last_two_lines[1]}. {last_two_lines[2]}. Please update the code to resolve this error, only send back the code, do not send back any other text other than the python code."
             #return error message
+            print(f"{error_message}")
+
             messages.append(
-                        {"role": "user", "content": f"Error occurred: {e}. Please update the code and send back the code again, only send back the code, do not send back any other text"},
+                        {"role": "user", "content": f"{error_message}"},
                     )
             chat = openai.ChatCompletion.create(
                 model="gpt-3.5-turbo", messages=messages

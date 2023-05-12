@@ -189,6 +189,24 @@ def web_scrapper_old(query,link,result_dict,message):
             print(f"DataGPT: {new_scrapper}")
             response = download_file_scraper(new_scrapper, "xlsx")
             return response
+        
+def error_messages(e,last_three_lines):
+            #add error messages to a different function
+    if isinstance(e, Exception) and str(e) == "No rows are in the Dataset":
+        error_message = f"There are no records in the dataset. The dataframe is empty, please update the code to resolve this error, only send back the code, do not send back any other text."
+    elif type(e).__name__ == "SyntaxError":
+        error_message = f"Please only reply with python code, do not send back any other text."
+    elif type(e).__name__ == "ValueError":
+        error_message = f"This is the error I am getting: {last_three_lines[1]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+    elif type(e).__name__ == "AttributeError":
+        error_message = f"This is the error I am getting: {last_three_lines[0]}.{last_three_lines[1]}.{last_three_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+    elif type(e).__name__ == "KeyError":
+        error_message = f"This is the error I am getting: {last_three_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+    else:
+        error_message = f"This is the error I am getting: {last_three_lines[1]}. {last_three_lines[2]}. Please update the code to resolve this error, only send back the code, do not send back any other text other than the python code."
+    #return error message    
+    return error_message
+
 def web_scrapper(query,link,result_dict,message):
     messages = [
     {"role": "system", "content": "You are a developer. You need to write python code to scrape this website:" + link + ". Write the code for a python scrapper, the dataset the user is looking for is " + query + ". The user will share a snippet from the source code of the website. Analyze the source code to find elements and class names that you need to scrape if necessary. For eg: wiki tables might often have th as well as td in their tables as records which causes errors in the scrappers you write, so you can analyze the source code to see which columns/records are th and which is td. Remember that there might be advertisements on the website so make sure the scrapper is scrapping throughout the entire website using find all. Make sure you add coloumn titles, Scrape and return the data only in a Excel file. The name of the excel file should be Dataset. Only return Python Code, do not return any other words other than the code. If the data is behind a paywall reply with only not_possible, but only if it is behind a paywall, if you are only able to scrape parts of the dataset the user is looking for its fine, reply with the code anyways"},
@@ -220,23 +238,10 @@ def web_scrapper(query,link,result_dict,message):
                 break
             # Get last line of error message
             error_lines = traceback.format_exc().strip().split("\n")
-            last_two_lines = error_lines[-3:]
+            last_three_lines = error_lines[-3:]
             print(f"Error occurred: {error_lines}")
-            print(f"Error occurred: {last_two_lines}")
-            #add error messages to a different function
-            if isinstance(e, Exception) and str(e) == "No rows are in the Dataset":
-                error_message = f"There are no records in the dataset. The dataframe is empty, please update the code to resolve this error, only send back the code, do not send back any other text."
-            elif type(e).__name__ == "SyntaxError":
-                error_message = f"Please only reply with python code, do not send back any other text."
-            elif type(e).__name__ == "ValueError":
-                error_message = f"This is the error I am getting: {last_two_lines[1]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
-            elif type(e).__name__ == "AttributeError":
-                error_message = f"This is the error I am getting: {last_two_lines[0]}.{last_two_lines[1]}.{last_two_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
-            elif type(e).__name__ == "KeyError":
-                error_message = f"This is the error I am getting: {last_two_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
-            else:
-                error_message = f"This is the error I am getting: {last_two_lines[1]}. {last_two_lines[2]}. Please update the code to resolve this error, only send back the code, do not send back any other text other than the python code."
-            #return error message
+            # print(f"Error occurred: {last_three_lines}")
+            error_message = error_messages(e,last_three_lines)
             print(f"{error_message}")
 
             messages.append(

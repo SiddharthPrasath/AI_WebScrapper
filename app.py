@@ -333,7 +333,7 @@ def download_file_scraper(df, file_type):
     # Set the appropriate Content-Type header
     if file_type == 'csv':
         response.headers['Content-Type'] = 'text/csv'
-    elif file_type == 'excel':
+    elif file_type == 'xlsx':
         response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
     # Set the Content-Disposition header to force download of the file

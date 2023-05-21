@@ -197,7 +197,7 @@ def error_messages(e,last_three_lines):
     elif type(e).__name__ == "SyntaxError":
         error_message = f"Please only reply with python code, do not send back any other text."
     elif type(e).__name__ == "ValueError":
-        error_message = f"This is the error I am getting: {last_three_lines[1]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+        error_message = f"This is the error I am getting: {last_three_lines[0]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
     elif type(e).__name__ == "AttributeError":
         error_message = f"This is the error I am getting: {last_three_lines[0]}.{last_three_lines[1]}.{last_three_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
     elif type(e).__name__ == "KeyError":

@@ -12,6 +12,12 @@ import pandas as pd
 import io
 import flask
 from flask_session import Session
+import concurrent.futures
+import uuid
+import time
+import multiprocessing as mp
+from multiprocessing import Pool
+from functools import partial
 def configure():
     load_dotenv()
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -20,7 +26,7 @@ def configure():
 
 def rank_websites(query,message,result_dict):
     messages = [
-    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+". Rank Wiki Sites always higher. Do not reply with any text other than JSON."},
+    {"role": "system", "content": "Do not reply with anything other than the JSON. The user is looking for a Dataset on: '" + query + "'. The user will provide you with a list of websites. You have to rank these websites from best to scrape, to worst to scrape. While ranking keep in mind, the dataset the user is looking for and if the website you rank high will have these coloumns:"+ str(result_dict[5])+" which are important to satisfy the customer. Also keep in mind that the content on the website should be free to access and not behing a paywall. Return the websites ranked in JSON format.The JSON format should be like this: " + '{"1":["website1"],"2":["website2"],"3":["website3"],"4":["website4"],"5":["website5"]}'+".One website per priority, Rank Wiki Sites always higher. Do not reply with any text other than JSON."},
 ]
     if message:
         messages.append(
@@ -197,7 +203,7 @@ def error_messages(e,last_three_lines):
     elif type(e).__name__ == "SyntaxError":
         error_message = f"Please only reply with python code, do not send back any other text."
     elif type(e).__name__ == "ValueError":
-        error_message = f"This is the error I am getting: {last_three_lines[0]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
+        error_message = f"This is the error I am getting: {last_three_lines[-1]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
     elif type(e).__name__ == "AttributeError":
         error_message = f"This is the error I am getting: {last_three_lines[0]}.{last_three_lines[1]}.{last_three_lines[2]},Please update the code to resolve this error, only reply with python code, do not send back any other text."
     elif type(e).__name__ == "KeyError":
@@ -368,6 +374,28 @@ def scrape_and_preview(scraper_code):
     response.headers['Content-Type'] = 'text/html'
 
     return response, df , num_rows
+#   scraped_data[idx] = {'preview': preview, 'num_rows': num_rows, 'type': type}
+#check for each website if type is preview, then add it to response array
+def create_response(scraped_data):
+    response = []
+    for data in scraped_data:
+        if data['type'] == 'preview':
+            response.append({
+                'preview': data['preview'],
+                'num_rows': data['num_rows'],
+                'type': data['type']
+            })
+    #if response is empty, then return a message
+    if len(response) == 0:
+        sorry_message = "Sorry! We couldn't find anything for your query. Please simplify your query and try again."
+        response.append({
+            'message': sorry_message,
+            'num_rows': 0,
+            'type': 'error'
+        })
+    return response
+
+
 app = Flask(__name__)
 app.secret_key = 'abdahvyqf9uquofb'
 
@@ -381,6 +409,168 @@ def index():
 
 @app.route('/scrape', methods=['POST'])
 def scrape():
+        isNormalExecution = False
+        isParallelExecution = True
+        isParallelExecutionThreading = False
+        # query = request.form['query']
+        query = request.get_json().get('message')
+        configure()
+        websites=search_results(query)
+        json_string = important_columns(query) #ChatGPT will Print the JSON string
+        cleaned_json_string = clean_gpt_response_to_json(json_string)
+        # print(cleaned_json_string)
+        result_dict = convert_json_to_dict(cleaned_json_string) 
+        print(result_dict)
+        json_string2=rank_websites(query,websites,result_dict)
+        try:
+            result_list = convert_json_to_list(json_string2)
+            print(result_list)
+            #check if length of result list is less than 5, then raise exception 
+            if len(result_list) < 5:
+                raise Exception("Less than 5 results")
+        except:
+            json_string2=rank_websites(query,websites,result_dict)
+            result_list = convert_json_to_list(json_string2)
+            
+        scraped_data = []
+        request_id = uuid.uuid4()
+
+        if isNormalExecution == True:
+            for i in range(0, 5):
+                website = result_list[i][1]
+                print(website)
+                preview,df,num_rows,type = execute_functions(website,query,result_dict)
+                if type == 'preview':
+                    scraped_data.append({'preview': preview, 'num_rows': num_rows, 'type': type})
+                    response = create_response(scraped_data)
+                    print(response)
+                    return flask.jsonify(response=response)
+                    # return flask.jsonify(preview=preview, num_rows=num_rows, type= 'preview', df=df.to_json())
+                # if type == 'error':
+                #     return flask.jsonify(message=preview, type= 'error' )
+            return flask.jsonify(response=response )
+        elif isParallelExecution == True:
+                pool = Pool(processes=5)
+
+                # Use starmap_async to execute execute_functions for each website
+                execute_with_args = partial(execute_functions, query=query, result_dict=result_dict)
+
+                # Use imap_unordered to execute execute_functions for each website
+                results = pool.imap_unordered(execute_with_args, [result_list[i][1] for i in range(0, 5)])
+                # Get the results from the multiprocessing pool
+                print("This is the result list:")
+                for result in results:
+                    print(" Scrapper Execution Complete:")
+                    print(result)
+                    preview,df,num_rows,type = result
+                    if type == 'preview':
+                        scraped_data.append({'preview': preview, 'num_rows': num_rows, 'type': type})
+                        response = create_response(scraped_data)
+                        print(response)
+                        kill_other_processes()
+                        return flask.jsonify(response=response)
+                
+                
+
+                pool.close()
+                pool.join()
+                return flask.jsonify(response=response)
+        #threading instead of procceses (concurrency instead of parrelisim), needs more refinement, gets stuck a lot and is slow, and stop_process_pool() doesn't work
+        elif isParallelExecutionThreading == True:
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+                    futures = [executor.submit(execute_functions, result_list[i][1], query, result_dict) for i in range(0, 3)]
+                    for idx, future in enumerate(concurrent.futures.as_completed(futures, timeout=1800)):
+                        preview, df, num_rows, type = future.result()
+                        scraped_data.append({'preview': preview, 'num_rows': num_rows, 'type': type})
+                        # check if type success, then break
+                        if type == 'preview':
+                            print(scraped_data)
+                            response = create_response(scraped_data)
+                            print(response)
+                            # doesnt stop the other threads
+                            stop_process_pool(executor)
+                            return flask.jsonify(response=response)
+                print(scraped_data)
+                response = create_response(scraped_data)
+                print(response)
+                return flask.jsonify(response=response)
+
+def kill_other_processes():
+    for p in mp.active_children():
+        if p != mp.current_process():
+            p.terminate()
+
+
+
+        
+            
+
+#doesn't work, doesnt stop the other threads
+def stop_process_pool(executor):
+    for process in executor._processes.values():
+        process.terminate()
+    executor.shutdown()
+
+def not_premium_execution(result_list,query,result_dict):
+        for i in range(0, 5):
+            source_code = get_source_code(result_list[i][1])
+            print(source_code)
+            try:
+                response, df, num_rows = web_scrapper(query, result_list[i][1], result_dict, source_code)
+                
+            except Exception as e:
+                print(f"Moving on To next Website because: {e}")
+                # print("too much tokens")
+                continue
+            if response != "not_possible":
+
+                # session['df'] = df.to_json()
+                # return flask.render_template('index.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
+                return response.data.decode('utf-8'), df, num_rows, "preview"
+
+        return "Sorry! We couldn't find anything for your query. Please simplify your query and try again.","","","error"
+
+def execute_functions(website,query,result_dict):
+        with app.app_context():
+            source_code = get_source_code(website)
+            print(source_code)
+            try:
+                response, df, num_rows = web_scrapper(query, website, result_dict, source_code)
+                
+            except Exception as e:
+                print(f"Moving on To next Website because: {e}")
+                # print("too much tokens")
+                response = "not_possible"
+            if response != "not_possible":
+
+                # session['df'] = df.to_json()
+                # return flask.render_template('index.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
+                return response.data.decode('utf-8'), df, num_rows, "preview"
+            return "Sorry! We couldn't find anything for your query. Please simplify your query and try again.","","","error"
+
+    
+def premium_execution(website,query,result_dict,request_id,i):
+        with app.app_context():
+            source_code = get_source_code(website)
+            print(source_code)
+            try:
+                response, df, num_rows = web_scrapper(query, website, result_dict, source_code)
+                
+            except Exception as e:
+                print(f"Moving on To next Website because: {e}")
+                # print("too much tokens")
+                exit()
+            if response != "not_possible":
+                word= str(request_id)+str(i)
+                # session[word] = df.to_json()
+                # return flask.render_template('index.html', preview_html=response.data.decode('utf-8'),num_rows=num_rows, df=df)
+                return response.data.decode('utf-8'), df, num_rows, "preview"
+            else:
+                return "Sorry! We couldn't find anything for your query. Please simplify your query and try again.","","","error"
+
+
+def scrape_old():
         # query = request.form['query']
         query = request.get_json().get('message')
         configure()
@@ -433,9 +623,9 @@ def download_excel():
 
     
     return response
+
 if __name__ == '__main__':
     app.run(host="0.0.0.0",port="5000")
-
 # https://sharegpt.com/c/HeqAGXz
 # https://sharegpt.com/c/C7wUG5v
 # https://sharegpt.com/c/DlIK6uQ

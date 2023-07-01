@@ -498,10 +498,28 @@ def scrape():
 
 def kill_other_processes():
     for p in mp.active_children():
+        #print active children processes
+        print ("Child process name: %s" % p.name)
         print ("Terminating process %d" % p.pid)
 
         if p != mp.current_process():
+            #terminate process
+            print ("Terminating process %d" % p.pid)
             p.terminate()
+            p.join()
+
+    
+    for p in mp.active_children():
+        #print active children processes
+        #check if alive
+        if p.is_alive():
+            print("Child process is still running.")
+        else:
+            print("Child process has terminated.")
+
+        print ("Child process name: %s" % p.name)
+        print ("Terminating process %d" % p.pid)
+
 
 
 

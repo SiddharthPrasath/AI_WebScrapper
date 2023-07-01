@@ -83,6 +83,7 @@ function scrollToBottom() {
   // chatbox.scrollTop = chatbox.scrollHeight;
 }
 //WHEN DOWNLOAD BUTTON IS CLICKEd IT SHOULD GO TO THE /DOWNLOAD ENDPOINT
+//function for response handler
 
 // Function to add bot message to the chat window
 function addBotMessage(response, type) {
@@ -118,7 +119,6 @@ function addPreviewmessage(response) {
   // Stop the loading message interval if it exists
   killLoadingmessage();
 
-  addMessage("Data Search Completed!", "bot");
   // addMessage("Here is a preview of the data", "bot");
   addMessage(
     "I found " +
@@ -170,13 +170,21 @@ function handleUserInput(event) {
     .then((data) => {
       // Add bot message with response from backend
       // if data has type preview then add preview message
-      if (data.type == "preview") {
-        addPreviewmessage(data, "preview");
-      }
-      if (data.type == "error") {
-        //send message to user that there was an error
-        killLoadingmessage();
-        addMessage(data.message, "bot");
+      addMessage("Data Search Completed!", "bot");
+      //check length of the response array
+
+      if (data.response && data.response.length > 0) {
+        data.response.forEach((responseData) => {
+          if (responseData.type == "preview") {
+            killLoadingmessage();
+            addPreviewmessage(responseData, "preview");
+          }
+          if (responseData.type == "error") {
+            //send message to user that there was an error
+            killLoadingmessage();
+            addMessage(responseData.message, "bot");
+          }
+        });
       }
     })
     .catch((error) => {

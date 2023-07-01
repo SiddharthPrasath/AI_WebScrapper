@@ -498,6 +498,8 @@ def scrape():
 
 def kill_other_processes():
     for p in mp.active_children():
+        print ("Terminating process %d" % p.pid)
+
         if p != mp.current_process():
             p.terminate()
 

@@ -416,6 +416,7 @@ def scrape():
         query = request.get_json().get('message')
         configure()
         websites=search_results(query)
+        print(websites)
         json_string = important_columns(query) #ChatGPT will Print the JSON string
         cleaned_json_string = clean_gpt_response_to_json(json_string)
         # print(cleaned_json_string)
@@ -506,7 +507,8 @@ def kill_other_processes():
             #terminate process
             print ("Terminating process %d" % p.pid)
             p.terminate()
-            p.join()
+    p.join()
+    
 
     
     for p in mp.active_children():

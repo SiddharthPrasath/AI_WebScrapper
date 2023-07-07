@@ -395,6 +395,14 @@ def create_response(scraped_data):
         })
     return response
 
+#save file to session
+def save_file(df, file_type):
+    #save file to session
+    session['df'] = df.to_json()
+
+
+
+
 
 app = Flask(__name__)
 app.secret_key = 'abdahvyqf9uquofb'
@@ -445,6 +453,8 @@ def scrape():
                     scraped_data.append({'preview': preview, 'num_rows': num_rows, 'type': type})
                     response = create_response(scraped_data)
                     print(response)
+                    save_file(df, 'excel')
+                    print("File Saved")
                     return flask.jsonify(response=response)
                     # return flask.jsonify(preview=preview, num_rows=num_rows, type= 'preview', df=df.to_json())
                 # if type == 'error':
@@ -469,12 +479,17 @@ def scrape():
                         response = create_response(scraped_data)
                         print(response)
                         kill_other_processes()
+                        save_file(df, 'excel')
+                        print("File Saved")
                         return flask.jsonify(response=response)
                 
                 
 
                 pool.close()
                 pool.join()
+                print(scraped_data)
+                response = create_response(scraped_data)
+                print(response)
                 return flask.jsonify(response=response)
         #threading instead of procceses (concurrency instead of parrelisim), needs more refinement, gets stuck a lot and is slow, and stop_process_pool() doesn't work
         elif isParallelExecutionThreading == True:

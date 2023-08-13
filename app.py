@@ -459,6 +459,8 @@ def scrape():
                     # return flask.jsonify(preview=preview, num_rows=num_rows, type= 'preview', df=df.to_json())
                 # if type == 'error':
                 #     return flask.jsonify(message=preview, type= 'error' )
+            response = create_response(scraped_data)
+            print(response)
             return flask.jsonify(response=response )
         elif isParallelExecution == True:
                 pool = Pool(processes=5)

@@ -417,8 +417,8 @@ def index():
 
 @app.route('/scrape', methods=['POST'])
 def scrape():
-        isNormalExecution = False
-        isParallelExecution = True
+        isNormalExecution = True
+        isParallelExecution = False
         isParallelExecutionThreading = False
         # query = request.form['query']
         query = request.get_json().get('message')

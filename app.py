@@ -480,7 +480,7 @@ def scrape():
                         scraped_data.append({'preview': preview, 'num_rows': num_rows, 'type': type})
                         response = create_response(scraped_data)
                         print(response)
-                        kill_other_processes()
+                        #kill_other_processes()
                         #save_file(df, 'excel')
                         print("File Saved")
                         return flask.jsonify(response=response)

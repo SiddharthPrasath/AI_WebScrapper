@@ -490,6 +490,7 @@ def scrape():
                 pool.close()
                 pool.join()
                 print(scraped_data)
+                print("ALL SCRAPPERS FAILED")
                 response = create_response(scraped_data)
                 print(response)
                 return flask.jsonify(response=response)

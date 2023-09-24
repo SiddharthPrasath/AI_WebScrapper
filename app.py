@@ -574,6 +574,7 @@ def not_premium_execution(result_list,query,result_dict):
 def execute_functions(website,query,result_dict):
         with app.app_context():
             source_code = get_source_code(website)
+            print("Source Code for Next website\n")
             print(source_code)
             try:
                 response, df, num_rows = web_scrapper(query, website, result_dict, source_code)

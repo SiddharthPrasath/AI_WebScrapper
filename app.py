@@ -467,6 +467,7 @@ def scrape():
 
                 # Use starmap_async to execute execute_functions for each website
                 execute_with_args = partial(execute_functions, query=query, result_dict=result_dict)
+                
 
                 # Use imap_unordered to edxecute execute_functions for each website
                 results = pool.imap_unordered(execute_with_args, [result_list[i][1] for i in range(0, 4)])

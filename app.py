@@ -417,8 +417,8 @@ def index():
 
 @app.route('/scrape', methods=['POST'])
 def scrape():
-        isNormalExecution = False
-        isParallelExecution = True
+        isNormalExecution = True
+        isParallelExecution = False
         isParallelExecutionThreading = False
         # query = request.form['query']
         query = request.get_json().get('message')
@@ -470,7 +470,7 @@ def scrape():
 
 
                 # Use imap_unordered to edxecute execute_functions for each website
-                results = pool.imap_unordered(execute_with_args, [result_list[i][1] for i in range(0, 4)])
+                results = pool.imap_unordered(execute_with_args, [result_list[i][1] for i in range(0, 5)])
                 # Get the results from the multiprocessing pool
                 print("This is the result list:")
                 for result in results:
